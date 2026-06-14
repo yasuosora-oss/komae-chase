@@ -1,0 +1,7 @@
+# 開発用・公開不要なもの
+.claude/
+.playwright-mcp/
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
