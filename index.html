@@ -11,7 +11,7 @@
 <style>
   :root{ --navy:#16223a; --navy2:#24304d; --blue:#2f6fd6; --red:#e23b3b; --yellow:#ffd54a; --ink:#eaf2ff; }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body{ margin:0; height:100%; overflow:hidden; background:#0c1322;
+  html,body{ margin:0; height:100%; overflow:hidden; background:#000000;
     font-family:"DotGothic16",ui-monospace,Menlo,Consolas,monospace; color:var(--ink);
     -webkit-user-select:none; user-select:none; touch-action:none; }
   #app{ position:relative; width:100vw; height:100vh; }
@@ -176,7 +176,7 @@ function distBtoI(b,n){const B=bIJ(b),I=iIJ(n);return Math.abs(B.i-(I.i+0.5))+Ma
 
 /* ===== Three.js ===== */
 const app=document.getElementById('app');
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0xbfe3f2); scene.fog=new THREE.Fog(0xbfe3f2,120,230);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x000000); scene.fog=new THREE.Fog(0x000000,120,260);
 const camera=new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 1000);
 const renderer=new THREE.WebGLRenderer({antialias:false});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1)*0.7); renderer.setSize(innerWidth,innerHeight);
