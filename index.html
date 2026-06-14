@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="robots" content="noindex,nofollow,noarchive" />
+<title>狛江チェイス KOMAE CHASE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet" />
+<style>
+  :root{ --navy:#16223a; --navy2:#24304d; --blue:#2f6fd6; --red:#e23b3b; --yellow:#ffd54a; --ink:#eaf2ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; overflow:hidden; background:#0c1322;
+    font-family:"DotGothic16",ui-monospace,Menlo,Consolas,monospace; color:var(--ink);
+    -webkit-user-select:none; user-select:none; touch-action:none; }
+  #app{ position:relative; width:100vw; height:100vh; }
+  canvas{ display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
+
+  #top{ position:absolute; top:0; left:0; right:0; height:52px; background:var(--navy);
+    display:flex; align-items:center; gap:8px; padding:0 10px; z-index:10; }
+  #top .title{ font-size:20px; } #top .en{ font-size:11px; color:#7fc4e6; margin-left:-2px; }
+  .pill{ background:var(--navy2); border-radius:8px; padding:5px 10px; font-size:13px; }
+  .pill.turn{ color:var(--yellow); }
+  .spacer{ flex:1; }
+  button.btn{ font-family:inherit; cursor:pointer; border:none; border-radius:8px;
+    background:var(--navy2); color:var(--ink); padding:7px 11px; font-size:13px; }
+  button.btn.active{ background:var(--blue); } button.btn:active{ transform:scale(.96); }
+
+  #bottom{ position:absolute; left:0; right:0; bottom:0; min-height:62px; background:var(--navy);
+    display:flex; align-items:center; gap:10px; padding:8px 12px; z-index:10; flex-wrap:wrap; }
+  #hint{ font-size:14px; line-height:1.4; flex:1; min-width:200px; }
+  #hint b{ color:var(--yellow); } #hint .g{ color:#9ee06a; } #hint .y{ color:#ffd54a; }
+  .officer-dots{ display:flex; gap:6px; }
+  .odot{ width:18px; height:18px; border-radius:50%; background:#3a4a66; border:2px solid #3a4a66; }
+  .odot.live{ background:var(--blue); border-color:var(--blue); }
+  .odot.done{ background:#1f3a26; border-color:#1f3a26; }
+  .odot.sel{ border-color:var(--yellow); }
+  #btnEndCrime{ display:none; background:#7a2230; }
+
+  #toast{ position:absolute; top:64px; left:50%; transform:translateX(-50%);
+    background:var(--navy); border:2px solid var(--blue); border-radius:10px;
+    padding:8px 16px; font-size:15px; z-index:20; opacity:0; transition:opacity .2s; pointer-events:none; max-width:88vw; text-align:center; }
+  #toast.show{ opacity:1; }
+
+  .screen{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(8,12,22,.86); z-index:40; padding:16px; }
+  .screen.hidden{ display:none; }
+  .card{ background:var(--navy); border:3px solid var(--blue); border-radius:14px;
+    padding:22px 24px; max-width:560px; width:92%; max-height:88vh; overflow:auto; text-align:center; }
+  .card h1{ margin:0 0 4px; font-size:28px; color:var(--yellow); }
+  .card h2{ margin:0 0 14px; font-size:13px; color:#9fb6e8; font-weight:400; }
+  .card p{ font-size:14px; line-height:1.7; text-align:left; }
+  .card ul{ text-align:left; font-size:13.5px; line-height:1.7; padding-left:20px; }
+  .card .big{ width:100%; padding:14px; font-size:17px; margin-top:10px; background:var(--blue); border:none; border-radius:12px; color:#fff; cursor:pointer; }
+  .card .big.sub{ background:var(--navy2); font-size:15px; }
+  .legend{ display:flex; gap:14px; font-size:13px; margin:10px 0; flex-wrap:wrap; justify-content:center; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .sw{ width:14px; height:14px; border-radius:3px; display:inline-block; }
+  #overlay.win .card{ border-color:#3ce08a; } #overlay.win h1{ color:#9ee0a8; }
+  #overlay.lose .card{ border-color:var(--red); } #overlay.lose h1{ color:#ff9aa6; }
+  .secret{ font-size:18px; color:var(--yellow); margin:6px 0 14px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div><span class="title">狛江チェイス</span> <span class="en">KOMAE CHASE</span></div>
+    <div class="pill turn" id="turnPill">準備中</div>
+    <div class="pill" id="phasePill">—</div>
+    <div class="spacer"></div>
+    <button class="btn active" id="btn3d">3D視点</button>
+    <button class="btn" id="btnTop">俯瞰視点</button>
+    <button class="btn" id="btnHelp">？</button>
+  </div>
+
+  <div id="bottom">
+    <div id="hint"></div>
+    <div class="officer-dots" id="dots"></div>
+    <button class="btn" id="btnEndCrime">移動おわり ▶</button>
+    <button class="btn" id="btnReset">最初から</button>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- スタート画面 -->
+  <div id="start" class="screen"><div class="card">
+    <h1>狛江チェイス</h1>
+    <h2>KOMAE CHASE — シティチェイス・狛江版</h2>
+    <div class="legend">
+      <span><i class="sw" style="background:#e23b3b"></i>犯人（1人・ビルに隠れる）</span>
+      <span><i class="sw" style="background:#2f6fd6"></i>警察（道路を歩く・2〜4人）</span>
+    </div>
+    <p><b>2〜4人</b>で遊べます。1人が<b>犯人</b>、残りが<b>警察</b>。1台の端末を回しながらプレイします。</p>
+    <ul>
+      <li>準備：①犯人が<b>隠れるビル</b>を選ぶ → ②警察が<b>置き場所（道路）</b>を決める</li>
+      <li>毎ターン各警察が「移動」か「まわり4ビルの確認」。確認で犯人を見つければ勝ち</li>
+      <li>犯人は隣のビルへ逃げ、<b>痕跡</b>を残す（確認したビルにだけ見える）</li>
+      <li><b>11ターン</b>逃げ切れば犯人の勝ち</li>
+    </ul>
+    <p style="text-align:center;margin:10px 0 2px">みんなで遊ぶ（犯人も人間）— <b>警察の人数</b>を選ぶ</p>
+    <div style="display:flex;gap:8px">
+      <button class="big" data-pc="2" style="flex:1;margin-top:4px">警察2人</button>
+      <button class="big" data-pc="3" style="flex:1;margin-top:4px">警察3人</button>
+      <button class="big" data-pc="4" style="flex:1;margin-top:4px">警察4人</button>
+    </div>
+    <button class="big sub" id="startSolo">ひとりで遊ぶ（犯人＝AI・警察3人）</button>
+  </div></div>
+
+  <!-- 受け渡し・準備 画面 -->
+  <div id="handoff" class="screen hidden"><div class="card">
+    <p class="secret" id="handoffMsg"></p>
+    <button class="big" id="handoffBtn"></button>
+  </div></div>
+
+  <!-- 勝敗 -->
+  <div id="overlay" class="screen hidden"><div class="card">
+    <h1 id="ovTitle"></h1><p id="ovText" style="text-align:center"></p>
+    <p style="text-align:center;font-size:13px;color:#9fb6e8">「盤面で答え合わせ」を押すと、犯人の通った道（番号付きの★と黄色いライン）を確認できます。</p>
+    <button class="big" id="ovShow">盤面で答え合わせ</button>
+    <button class="big sub" id="ovBtn">もう一度あそぶ</button>
+  </div></div>
+
+  <!-- あそびかた -->
+  <div id="help" class="screen hidden"><div class="card">
+    <h1 style="font-size:22px">あそびかた</h1>
+    <div class="legend">
+      <span><i class="sw" style="background:#e23b3b"></i>犯人（ビルに隠れる）</span>
+      <span><i class="sw" style="background:#2f6fd6"></i>警察（道路・2〜4人）</span>
+    </div>
+    <ul>
+      <li>街は <b>25か所のビル</b> と、その間の <b>道路の交差点</b>。各ビルには<b>看板</b>で名前が出ています。</li>
+      <li><b>準備</b>：犯人が隠れ場所を選び、次に警察が3機を道路に配置します（端末を回す）。</li>
+      <li><b>警察の番</b>：1人選んで <span class="g">緑＝移動</span> か <span class="y">黄のビル＝確認</span>（今の交差点のまわり4ビル）。1人1回。</li>
+      <li>確認したビルに犯人がいれば <b>発見＝警察の勝ち！</b></li>
+      <li><b>犯人の番</b>：隣のビルへ1マス逃げ、通った所に痕跡を残す（同じ場所へは戻れない）。</li>
+      <li><b>痕跡は確認するまで見えません</b>。色は <span style="color:#ffd54a">1ターン目＝黄</span>／<span style="color:#e23b3b">6ターン目＝赤</span>／他＝グレー、番号付き。</li>
+      <li><b>勝敗</b>：警察＝確認で発見 or 犯人が動けない／犯人＝11ターン逃げ切り。</li>
+    </ul>
+    <button class="big" id="btnHelpClose">とじる</button>
+  </div></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ===== 25か所（n=正式名 / s=看板用の短縮名 / t=見た目）===== */
+const PLACES = [
+  {n:'狛江駅',t:'station',s:'狛江駅'},      {n:'小山ひろと家',t:'house',s:'ひろと家'}, {n:'狛江高校',t:'school',s:'高校'},   {n:'狛江郵便局',t:'post',s:'郵便局'},  {n:'佐藤家',t:'house',s:'佐藤家'},
+  {n:'石渡家',t:'house',s:'石渡家'},        {n:'伊豆美神社',t:'shrine',s:'神社'},     {n:'むいから民家園',t:'oldhouse',s:'民家園'},{n:'市民グラウンド',t:'field',s:'球場'},{n:'狛江第一小学校',t:'school',s:'一小'},
+  {n:'エコルマホール',t:'hall',s:'エコルマ'},{n:'中央図書館',t:'library',s:'図書館'}, {n:'狛江市役所',t:'cityhall',s:'市役所'},{n:'小山本家',t:'house2',s:'本家'},   {n:'狛江第五小学校',t:'school',s:'五小'},
+  {n:'泉龍寺',t:'temple',s:'泉龍寺'},        {n:'五本松',t:'park',s:'五本松'},         {n:'多摩川緑地',t:'park',s:'多摩川'},  {n:'緑野小学校',t:'school',s:'緑野小'},{n:'和泉多摩川商店街',t:'shops',s:'商店街'},
+  {n:'兜塚古墳',t:'kofun',s:'古墳'},        {n:'総合体育館',t:'gym',s:'体育館'},      {n:'和泉多摩川駅',t:'station',s:'和泉駅'},{n:'狛江第四中学校',t:'school',s:'四中'},{n:'喜多見駅',t:'station',s:'喜多見'},
+];
+
+/* ===== 座標系：ビル5×5 / 交差点4×4 ===== */
+const N=5, CELL=12, NI=4;
+const bIJ=(x)=>({i:x%N,j:Math.floor(x/N)}); const bToIdx=(i,j)=>j*N+i;
+const bWorld=(i,j)=>({x:(i-(N-1)/2)*CELL,z:(j-(N-1)/2)*CELL});
+const inB=(i,j)=>i>=0&&i<N&&j>=0&&j<N;
+function bNeighbors(x){const{i,j}=bIJ(x);const o=[];[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{if(inB(i+a,j+b))o.push(bToIdx(i+a,j+b));});return o;}
+const iIJ=(x)=>({i:x%NI,j:Math.floor(x/NI)}); const iToIdx=(i,j)=>j*NI+i;
+const iWorld=(i,j)=>({x:(i-(NI-1)/2)*CELL,z:(j-(NI-1)/2)*CELL});
+const inI=(i,j)=>i>=0&&i<NI&&j>=0&&j<NI;
+function iNeighbors(x){const{i,j}=iIJ(x);const o=[];[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{if(inI(i+a,j+b))o.push(iToIdx(i+a,j+b));});return o;}
+function buildingsAround(x){const{i,j}=iIJ(x);return[bToIdx(i,j),bToIdx(i+1,j),bToIdx(i,j+1),bToIdx(i+1,j+1)];}
+function distBtoI(b,n){const B=bIJ(b),I=iIJ(n);return Math.abs(B.i-(I.i+0.5))+Math.abs(B.j-(I.j+0.5));}
+
+/* ===== Three.js ===== */
+const app=document.getElementById('app');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xbfe3f2); scene.fog=new THREE.Fog(0xbfe3f2,120,230);
+const camera=new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 1000);
+const renderer=new THREE.WebGLRenderer({antialias:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1)*0.7); renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFShadowMap; app.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera, renderer.domElement);
+controls.target.set(0,4,0); controls.enablePan=false; controls.minDistance=40; controls.maxDistance=160; controls.maxPolarAngle=Math.PI/2.15;
+scene.add(new THREE.AmbientLight(0xffffff,0.78));
+const sun=new THREE.DirectionalLight(0xfff3da,1.0); sun.position.set(40,80,30); sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024); const s=60; Object.assign(sun.shadow.camera,{left:-s,right:s,top:s,bottom:-s}); scene.add(sun);
+
+const gsize=CELL*N+6;
+const groundMesh=new THREE.Mesh(new THREE.BoxGeometry(gsize,2,gsize),new THREE.MeshLambertMaterial({color:0x9aa07e}));
+groundMesh.position.y=-1; groundMesh.receiveShadow=true; scene.add(groundMesh);
+const street=new THREE.Mesh(new THREE.PlaneGeometry(gsize,gsize),new THREE.MeshLambertMaterial({color:0x8f8c74}));
+street.rotation.x=-Math.PI/2; street.position.y=0.02; street.receiveShadow=true; scene.add(street);
+const grid=new THREE.GridHelper(CELL*N,N,0xcfcbb0,0xcfcbb0); grid.position.y=0.05; scene.add(grid);
+for(let k=0;k<NI*NI;k++){const{i,j}=iIJ(k);const w=iWorld(i,j);
+  const m=new THREE.Mesh(new THREE.CircleGeometry(1.4,16),new THREE.MeshBasicMaterial({color:0x5e5a44}));
+  m.rotation.x=-Math.PI/2; m.position.set(w.x,0.07,w.z); scene.add(m);}
+
+/* 部品 */
+function box(w,h,d,color,o={}){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color,...(o.mat||{})}));
+  m.castShadow=!o.noShadow; m.receiveShadow=true; if(o.pos)m.position.set(...o.pos); return m;}
+function pyramid(size,h,color){const m=new THREE.Mesh(new THREE.ConeGeometry(size,h,4),new THREE.MeshLambertMaterial({color,flatShading:true}));
+  m.rotation.y=Math.PI/4; m.castShadow=true; return m;}
+function addWindows(g,w,h,d,rows,cols,color=0x2a3550){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+  const win=box(1.1,1.4,0.2,color,{noShadow:true}); win.position.set((c-(cols-1)/2)*(w/cols),(r+0.8)*(h/(rows+0.6)),d/2+0.06); g.add(win);}}
+
+function makeBuilding(type,idx){
+  const g=new THREE.Group(); let topY=4; const FW=8.4; const houseRoofs=[0xb5573f,0x4e8f7a,0xc08a3a,0x7a6cae];
+  switch(type){
+    case 'station': topY=4; g.add(box(FW,3.4,FW*0.7,0xd9b56a,{pos:[0,1.7,0]}));
+      g.add(box(FW+0.6,0.7,FW*0.7+0.6,idx===0?0xd6473f:0x3f7fb0,{pos:[0,3.6,0]}));
+      g.add(box(FW+1,0.6,2.2,0xcfcabf,{pos:[0,0.3,FW*0.45]})); addWindows(g,FW,3,FW*0.7,1,3,0x355a8a); break;
+    case 'hall': topY=13; g.add(box(FW,12,FW,0x4f9bc4,{pos:[0,6,0]})); g.add(box(FW+0.4,1,FW+0.4,0x8ecbe8,{pos:[0,12.5,0]})); addWindows(g,FW,11,FW,4,3,0xbfe3f2); break;
+    case 'cityhall': topY=8; g.add(box(FW,7.5,FW*0.9,0x9aa0ad,{pos:[0,3.75,0]})); g.add(box(2,1.6,2,0x7a8090,{pos:[0,8.3,0]})); addWindows(g,FW,7,FW*0.9,3,3,0xdfe3ec); break;
+    case 'library': topY=6; g.add(box(FW,5.5,FW*0.9,0xc9b48a,{pos:[0,2.75,0]})); g.add(box(FW+0.4,0.5,FW*0.9+0.4,0xa78f63,{pos:[0,5.6,0]})); addWindows(g,FW,5,FW*0.9,2,3,0x6a5a3a); break;
+    case 'gym': topY=7; g.add(box(FW,5,FW,0xaab0b8,{pos:[0,2.5,0]}));
+      {const d=new THREE.Mesh(new THREE.SphereGeometry(FW*0.55,12,8,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:0xc7ccd2})); d.position.y=5; d.castShadow=true; g.add(d);} break;
+    case 'school': topY=5; g.add(box(FW,4.6,FW*0.8,0xcdbf9a,{pos:[0,2.3,0]})); g.add(box(FW+0.4,0.4,FW*0.8+0.4,0xb84f3f,{pos:[0,4.7,0]})); addWindows(g,FW,4.2,FW*0.8,2,4,0x4a6a8a); break;
+    case 'post': topY=4.5; g.add(box(FW*0.85,4,FW*0.85,0xe2e2e6,{pos:[0,2,0]})); g.add(box(FW*0.85+0.3,0.5,FW*0.85+0.3,0xd6473f,{pos:[0,4.2,0]})); addWindows(g,FW*0.85,3.6,FW*0.85,1,2,0xd6473f); break;
+    case 'temple': topY=5; g.add(box(FW*0.8,3.2,FW*0.8,0x8a6038,{pos:[0,1.6,0]})); {const r=pyramid(FW*0.78,3.2,0x2e8e72); r.position.y=4.8; g.add(r);} break;
+    case 'shrine': topY=5; g.add(box(FW*0.7,3,FW*0.7,0x9a6b4a,{pos:[0,1.5,0]})); {const r=pyramid(FW*0.7,2.4,0xb43a2e); r.position.y=4.2; g.add(r);}
+      g.add(box(0.5,3,0.5,0xc0392b,{pos:[-2.4,1.5,3.2]})); g.add(box(0.5,3,0.5,0xc0392b,{pos:[2.4,1.5,3.2]})); g.add(box(5.6,0.6,0.6,0xc0392b,{pos:[0,3.1,3.2]})); break;
+    case 'oldhouse': topY=4; g.add(box(FW*0.8,2.4,FW*0.8,0xcdb98f,{pos:[0,1.2,0]})); {const r=pyramid(FW*0.85,2.8,0x7a6a3a); r.position.y=3.8; g.add(r);} break;
+    case 'house': case 'house2':{ const big=type==='house2'; topY=big?5:4; const w=big?FW*0.82:FW*0.7;
+      g.add(box(w,big?3:2.4,w,0xe0cba0,{pos:[0,(big?1.5:1.2),0]}));
+      const r=pyramid(w*1.05,big?2.4:1.8,big?0x5a3a2a:houseRoofs[idx%houseRoofs.length]); r.position.y=(big?3:2.4)+(big?1.2:0.9); g.add(r);
+      g.add(box(0.9,1.4,0.2,0x6a4a2a,{pos:[0,0.7,w/2+0.05],noShadow:true})); break; }
+    case 'shops':{ topY=3; const cols=[0xd9544f,0xe0a93a,0x3f9a8f,0x4f7fc4];
+      for(let k=0;k<3;k++) g.add(box(2.4,2.6,FW*0.8,cols[(idx+k)%cols.length],{pos:[(k-1)*2.6,1.3,0]})); g.add(box(FW,0.5,FW*0.8+0.3,0x333a4a,{pos:[0,2.7,0]})); break; }
+    case 'kofun': topY=4; {const m=new THREE.Mesh(new THREE.SphereGeometry(FW*0.55,14,8,0,Math.PI*2,0,Math.PI/2),new THREE.MeshLambertMaterial({color:0x5fa83f,flatShading:true})); m.scale.y=1.2; m.castShadow=true; g.add(m);} break;
+    case 'park': topY=1.5; g.add(box(FW,0.8,FW,0x6fae4f,{pos:[0,0.4,0]}));
+      g.add(box(0.8,2,0.8,0x7a4a2a,{pos:[1.5,1.2,1]})); g.add(box(2.4,2.4,2.4,0x3f9a55,{pos:[1.5,3,1]}));
+      g.add(box(0.7,1.6,0.7,0x7a4a2a,{pos:[-1.6,1,-1]})); g.add(box(2,2,2,0x4eae66,{pos:[-1.6,2.6,-1]})); break;
+    case 'field': topY=0.9; g.add(box(FW,0.6,FW,0xc09a5a,{pos:[0,0.3,0]})); break;
+    default: g.add(box(FW*0.8,3,FW*0.8,0xcfc6ad,{pos:[0,1.5,0]}));
+  }
+  g.userData.topY=topY; return g;
+}
+
+const buildings=[];
+for(let idx=0;idx<25;idx++){const{i,j}=bIJ(idx);const w=bWorld(i,j);
+  const b=makeBuilding(PLACES[idx].t,idx); b.position.set(w.x,0.1,w.z); scene.add(b); buildings[idx]=b;}
+
+/* ===== 看板（キャンバス文字のスプライト）===== */
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function makeLabelSprite(text, border='#ffd54a', bg='rgba(20,30,55,0.92)'){
+  const fs=40, pad=14, c=document.createElement('canvas'), ctx=c.getContext('2d');
+  const font=`bold ${fs}px "DotGothic16","Meiryo",sans-serif`; ctx.font=font;
+  const tw=Math.ceil(ctx.measureText(text).width);
+  c.width=tw+pad*2; c.height=fs+pad*2; ctx.font=font;
+  roundRect(ctx,0,0,c.width,c.height,16); ctx.fillStyle=bg; ctx.fill();
+  ctx.lineWidth=4; ctx.strokeStyle=border; roundRect(ctx,2,2,c.width-4,c.height-4,14); ctx.stroke();
+  ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,c.width/2,c.height/2+2);
+  const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter; tex.magFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:true,depthWrite:false}));
+  sp.scale.set(c.width*0.06, c.height*0.06, 1); return sp;   // 看板を3倍に拡大
+}
+function buildSigns(){ for(let idx=0;idx<25;idx++){ const{i,j}=bIJ(idx); const w=bWorld(i,j);
+  const sp=makeLabelSprite(PLACES[idx].s); sp.position.set(w.x,(buildings[idx].userData.topY||1)+4.2,w.z); scene.add(sp);} }
+(document.fonts&&document.fonts.ready)?document.fonts.ready.then(buildSigns):buildSigns();
+
+/* クリック判定 */
+const bPickers=[], iPickers=[];
+const bPickGeo=new THREE.BoxGeometry(CELL*0.72,9,CELL*0.72);   // 低め＝道路（交差点）をふさがない
+for(let idx=0;idx<25;idx++){const{i,j}=bIJ(idx);const w=bWorld(i,j);
+  const p=new THREE.Mesh(bPickGeo,new THREE.MeshBasicMaterial({visible:false})); p.position.set(w.x,4.5,w.z); p.userData={kind:'b',idx}; scene.add(p); bPickers[idx]=p;}
+const iPickGeo=new THREE.CircleGeometry(CELL*0.34,16);
+for(let k=0;k<NI*NI;k++){const{i,j}=iIJ(k);const w=iWorld(i,j);
+  const p=new THREE.Mesh(iPickGeo,new THREE.MeshBasicMaterial({visible:false})); p.rotation.x=-Math.PI/2; p.position.set(w.x,0.1,w.z); p.userData={kind:'i',idx:k}; scene.add(p); iPickers[k]=p;}
+
+/* ハイライト */
+const hl=new THREE.Group(); scene.add(hl);
+function clearHL(){while(hl.children.length)hl.remove(hl.children[0]);}
+function ringAt(x,y,z,color,r1,r2){const m=new THREE.Mesh(new THREE.RingGeometry(r1,r2,4),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.85,side:THREE.DoubleSide}));
+  m.rotation.x=-Math.PI/2; m.rotation.z=Math.PI/4; m.position.set(x,y,z); return m;}
+function hlInters(list,color=0x9ee06a){ list.forEach(k=>{const w=iWorld(iIJ(k).i,iIJ(k).j); hl.add(ringAt(w.x,0.3,w.z,color,CELL*0.16,CELL*0.30));}); }
+function hlBuildings(list,color=0xffd54a){ list.forEach(b=>{ const{i,j}=bIJ(b); const w=bWorld(i,j); const topY=buildings[b].userData.topY||1;
+  // 建物の上空に浮かぶ▼マーカー（常に手前に描画＝建物にめり込まない）
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(1.6,2.8,4),new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.95,depthTest:false}));
+  cone.rotation.x=Math.PI; cone.renderOrder=996; const base=topY+5.6; cone.position.set(w.x,base,w.z); cone.userData.bob=base; hl.add(cone);
+}); }
+
+/* 人物ボクセル */
+function makePerson(bodyColor,hatColor,isCriminal=false){
+  const g=new THREE.Group(); const skin=0xf2c79a, dark=isCriminal?0x3a2a2a:0x26324d;
+  g.add(box(1.3,2.2,1.3,dark,{pos:[-0.85,1.1,0]})); g.add(box(1.3,2.2,1.3,dark,{pos:[0.85,1.1,0]}));
+  g.add(box(3.0,3.2,2.0,bodyColor,{pos:[0,3.8,0]}));
+  g.add(box(0.9,2.8,0.9,bodyColor,{pos:[-2.0,3.9,0]})); g.add(box(0.9,2.8,0.9,bodyColor,{pos:[2.0,3.9,0]}));
+  g.add(box(2.2,2.2,2.2,skin,{pos:[0,6.6,0]})); g.add(box(2.6,0.8,2.6,hatColor,{pos:[0,7.9,0]}));
+  if(isCriminal) g.add(box(2.3,0.7,0.2,0x16223a,{pos:[0,6.7,1.05],noShadow:true}));
+  else { g.add(box(0.7,0.7,0.2,0xffd54a,{pos:[0,4.2,1.05],noShadow:true})); g.add(box(2.8,0.3,2.6,0x16223a,{pos:[0,7.45,0],noShadow:true})); }
+  g.scale.setScalar(0.62); return g;
+}
+const police=[]; for(let k=0;k<4;k++){const m=makePerson(0x2f6fd6,0x214f9c,false); m.visible=false; scene.add(m); police.push({mesh:m});}
+const criminal={mesh:makePerson(0xe23b3b,0xa82626,true)}; criminal.mesh.visible=false; scene.add(criminal.mesh);
+const selRing=new THREE.Mesh(new THREE.TorusGeometry(2.2,0.32,8,20),new THREE.MeshBasicMaterial({color:0xffd54a})); selRing.rotation.x=Math.PI/2; selRing.visible=false; scene.add(selRing);
+const crimRing=new THREE.Mesh(new THREE.TorusGeometry(2.6,0.4,8,20),new THREE.MeshBasicMaterial({color:0xe23b3b})); crimRing.rotation.x=Math.PI/2; crimRing.visible=false; scene.add(crimRing);
+function atInter(p,x,y=0){const{i,j}=iIJ(x);const w=iWorld(i,j);p.position.set(w.x,0.1+y,w.z);}
+function atBuilding(p,x,y=0){const{i,j}=bIJ(x);const w=bWorld(i,j);p.position.set(w.x,(buildings[x].userData.topY||1)+y,w.z);}
+
+/* 痕跡（色は 1=黄, 6=赤, 他=グレー）＋番号 */
+const traceMeshes=new Map();
+function traceColor(turn){ return turn===1?0xffd54a : turn===6?0xe23b3b : 0xc2c5cc; }
+function makeStarSprite(turn,colHex){     // 色別の★（数字は1と6だけ）
+  const c=document.createElement('canvas'); c.width=c.height=120; const ctx=c.getContext('2d');
+  const cx=60,cy=58,sp5=5,outer=54,inner=23; ctx.beginPath();
+  for(let i=0;i<sp5*2;i++){ const r=i%2?inner:outer; const a=-Math.PI/2+i*Math.PI/sp5; ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r); }
+  ctx.closePath(); ctx.fillStyle='#'+colHex.toString(16).padStart(6,'0'); ctx.fill(); ctx.lineWidth=7; ctx.strokeStyle='#16223a'; ctx.stroke();
+  if(turn===1||turn===6){ ctx.fillStyle='#16223a'; ctx.font='bold 50px "DotGothic16","Meiryo",sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(turn),cx,cy+3); }
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,depthWrite:false})); s.renderOrder=998; s.scale.set(6,6,1); return s; // 2倍に拡大
+}
+function addTrace(bidx,turn){ if(traceMeshes.has(bidx)) return; const{i,j}=bIJ(bidx); const w=bWorld(i,j);
+  const base=(buildings[bidx].userData.topY||1)+2.2;
+  const star=makeStarSprite(turn,traceColor(turn)); star.position.set(w.x+1.8,base,w.z+1.8); scene.add(star);
+  traceMeshes.set(bidx,{star,base}); }
+function clearTraces(){ traceMeshes.forEach(o=>scene.remove(o.star)); traceMeshes.clear(); }
+
+/* ===== 状態 ===== */
+let state;
+function freshState(criminalAI,policeCount){ return {
+  criminalAI, policeCount, turn:1, phase:'setup-hide', police:[], criminal:-1, visited:new Set(), trailTurn:{}, found:new Set(),
+  acted:Array(policeCount).fill(false), selected:0, over:false, humanMoves:[], reveal:false }; }
+
+function showCriminal(b){ criminal.mesh.visible=b; crimRing.visible=b; if(b){ atBuilding(criminal.mesh,state.criminal); atBuilding(crimRing,state.criminal,0.3);} }
+
+/* 画面（受け渡し/勝敗/ヘルプ/スタート） */
+const elStart=document.getElementById('start'), elHand=document.getElementById('handoff'),
+      elOver=document.getElementById('overlay'), elHelp=document.getElementById('help');
+function handoff(msg,btn,cb){ elHand.querySelector('#handoffMsg').innerHTML=msg; const b=elHand.querySelector('#handoffBtn');
+  b.textContent=btn; b.onclick=()=>{ elHand.classList.add('hidden'); cb&&cb(); }; elHand.classList.remove('hidden'); }
+
+/* ===== ゲーム開始 ===== */
+function startGame(criminalAI,policeCount){
+  elStart.classList.add('hidden'); elOver.classList.add('hidden');
+  clearTraces(); clearHL(); if(pathLine){scene.remove(pathLine);pathLine=null;} police.forEach(p=>p.mesh.visible=false); showCriminal(false);
+  state=freshState(criminalAI,policeCount);
+  updateUI();
+  if(criminalAI){ state.criminal=Math.floor(Math.random()*25); beginPlace(true); }
+  else handoff('犯人プレイヤーの番です。<br>隠れるビルを選びます。<br>（他の人は画面を見ないで！）','犯人だけ画面を見る', beginHide);
+}
+function beginHide(){ state.phase='setup-hide'; clearHL(); hlBuildings([...Array(25).keys()],0xffd54a); updateUI(); }
+function hideAt(bidx){ state.criminal=bidx; showCriminal(true);
+  handoff(`「${PLACES[bidx].n}」に隠れました。<br>警察プレイヤーに画面を渡してください。`,'警察の番へ', ()=>{ showCriminal(false); beginPlace(false); }); }
+function beginPlace(fromAI){ state.phase='setup-place'; state.police=[]; clearHL(); hlInters([...Array(16).keys()]); updateUI();
+  if(fromAI){ /* AI時もここで警察が配置（人間） */ } }
+function placeOfficer(iidx){ if(state.police.includes(iidx)) return; const k=state.police.length;
+  state.police.push(iidx); police[k].mesh.visible=true; atInter(police[k].mesh,iidx);
+  if(state.police.length===state.policeCount){ clearHL(); startPolicePhase(); } else { clearHL(); hlInters([...Array(16).keys()].filter(x=>!state.police.includes(x))); updateUI(); } }
+
+function startPolicePhase(){ state.phase='police'; state.acted=[false,false,false]; selectFirstUnacted(); updateUI(); }
+function selectFirstUnacted(){ const k=state.acted.findIndex(v=>!v); state.selected=(k<0?0:k); refreshSelection(); }
+function movesFor(k){ return iNeighbors(state.police[k]); }
+function searchesFor(k){ return buildingsAround(state.police[k]); }
+function refreshSelection(){ if(state.phase!=='police'){ selRing.visible=false; clearHL(); updateDots(); return; }
+  const k=state.selected; selRing.visible=true; atInter(selRing,state.police[k],0.3); selRing.position.y=0.3;
+  clearHL(); hlInters(movesFor(k)); hlBuildings(searchesFor(k)); updateDots(); }
+
+/* ===== タップ ===== */
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+let downPos=null, downTime=0;
+renderer.domElement.addEventListener('pointerdown',e=>{downPos={x:e.clientX,y:e.clientY};downTime=performance.now();});
+renderer.domElement.addEventListener('pointerup',e=>{ if(!downPos)return; const d=Math.hypot(e.clientX-downPos.x,e.clientY-downPos.y),dt=performance.now()-downTime; downPos=null;
+  if(d>10||dt>600)return; onTap(e.clientX,e.clientY); });
+function onTap(cx,cy){
+  if(!state||state.over) return;
+  if(!elHand.classList.contains('hidden')||!elStart.classList.contains('hidden')||!elOver.classList.contains('hidden')||!elHelp.classList.contains('hidden')) return;
+  ndc.x=(cx/innerWidth)*2-1; ndc.y=-(cy/innerHeight)*2+1; ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects([...iPickers,...bPickers],false); if(!hits.length) return;
+  const want=(kind)=>{ for(const h of hits){ if(h.object.userData.kind===kind) return h.object.userData.idx; } return -1; }; // フェーズに合う対象を優先
+  if(state.phase==='setup-hide'){ const b=want('b'); if(b>=0) hideAt(b); return; }
+  if(state.phase==='setup-place'){ const ii=want('i'); if(ii>=0) placeOfficer(ii); return; }
+  if(state.phase==='crime-human'){ const b=want('b'); if(b>=0&&state.humanMoves.includes(b)) criminalMoveTo(b); return; }
+  if(state.phase==='police'){ const k=state.selected;
+    for(const h of hits){ const u=h.object.userData;            // 手前から順に「実行できる行動」を探す
+      if(u.kind==='i'){ const on=state.police.findIndex((p,kk)=>p===u.idx&&!state.acted[kk]);
+        if(on>=0&&on!==k){ state.selected=on; refreshSelection(); return; }
+        if(movesFor(k).includes(u.idx)){ state.police[k]=u.idx; atInter(police[k].mesh,u.idx); finishAction(k); return; } }
+      else if(u.kind==='b'){ if(searchesFor(k).includes(u.idx)){
+        if(u.idx===state.criminal){ flash(u.idx,0x9ee06a); return endGame('win',`「${PLACES[u.idx].n}」で犯人を確保！`); }
+        if(state.trailTurn[u.idx]!==undefined){ if(!state.found.has(u.idx)){ state.found.add(u.idx); addTrace(u.idx,state.trailTurn[u.idx]); }
+          flash(u.idx,0xffb300); toast(`痕跡発見！犯人は <b>${state.trailTurn[u.idx]}ターン目</b> にここを通った`); }
+        else { flash(u.idx,0xff6b6b); toast(`「${PLACES[u.idx].n}」を確認 … もぬけの殻`); }
+        finishAction(k); return; } }
+    }
+  }
+}
+function finishAction(k){ state.acted[k]=true; if(state.acted.every(v=>v)) policeDone(); else selectFirstUnacted(); }
+function flash(bidx,color){ const orig=[]; buildings[bidx].traverse(o=>{if(o.material&&o.material.emissive){orig.push([o,o.material.emissive.getHex()]); o.material.emissive.setHex(color);}});
+  setTimeout(()=>orig.forEach(([o,c])=>o.material.emissive.setHex(c)),360); }
+
+function policeDone(){ selRing.visible=false; clearHL();
+  if(state.criminalAI){ state.phase='crime'; updateUI(); setTimeout(criminalAI,650); }
+  else { state.phase='crime-wait'; updateUI(); handoff('犯人プレイヤーの番です。<br>（他の人は画面を見ないで！）','犯人だけ画面を見る', beginCrimeHuman); } }
+
+function validCriminalMoves(){ return bNeighbors(state.criminal).filter(n=>!state.visited.has(n)); }
+function beginCrimeHuman(){ const mv=validCriminalMoves(); if(mv.length===0) return endGame('win','犯人は袋小路に追い込まれた！');
+  state.phase='crime-human'; state.humanMoves=mv; showCriminal(true); clearHL(); hlBuildings(mv,0xff6b6b);
+  document.getElementById('btnEndCrime').style.display='none'; updateUI(); }
+function criminalMoveTo(bidx){ state.visited.add(state.criminal); state.trailTurn[state.criminal]=state.turn;
+  state.criminal=bidx; atBuilding(criminal.mesh,bidx); clearHL();
+  if(state.turn>=11) return endGame('lose','犯人に11ターン逃げ切られた…');
+  handoff('逃げました。<br>警察プレイヤーに画面を渡してください。','警察の番へ', ()=>{ showCriminal(false); state.turn++; startPolicePhase(); }); }
+
+function criminalAI(){ if(state.over) return; const cand=validCriminalMoves();
+  if(cand.length===0) return endGame('win','犯人を追い詰めた！逃げ場なし');
+  const ranked=cand.map(n=>({n,s:Math.min(...state.police.map(p=>distBtoI(n,p)))})); const best=Math.max(...ranked.map(r=>r.s));
+  const chosen=ranked.filter(r=>r.s===best)[Math.floor(Math.random()*ranked.filter(r=>r.s===best).length)].n;
+  state.visited.add(state.criminal); state.trailTurn[state.criminal]=state.turn; state.criminal=chosen;
+  if(state.reveal) showCriminal(true);
+  if(state.turn>=11) return endGame('lose','犯人に11ターン逃げ切られた…');
+  state.turn++; startPolicePhase(); }
+
+/* 答え合わせ：犯人が通った全ビルに★（番号付き）＋通った順の経路ライン */
+let pathLine=null;
+function showAnswer(){
+  const entries=Object.keys(state.trailTurn).map(b=>({b:+b,t:state.trailTurn[b]})).sort((a,b)=>a.t-b.t);
+  entries.forEach(e=>addTrace(e.b,e.t));
+  const ptOf=(b)=>{const{i,j}=bIJ(b);const w=bWorld(i,j);return new THREE.Vector3(w.x,(buildings[b].userData.topY||1)+1.9,w.z);};
+  const pts=entries.map(e=>ptOf(e.b)); pts.push(ptOf(state.criminal));
+  if(pathLine){ scene.remove(pathLine); pathLine=null; }
+  if(pts.length>=2){ pathLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color:0xffd54a})); pathLine.material.depthTest=false; pathLine.renderOrder=994; scene.add(pathLine); }
+}
+function endGame(kind,msg){ state.over=true; state.phase='over'; selRing.visible=false; clearHL(); showCriminal(true); showAnswer();
+  elOver.className='screen '+(kind==='win'?'win':'lose');
+  elOver.querySelector('#ovTitle').textContent=(kind==='win')?'警察の勝ち！':'犯人の勝ち！';
+  elOver.querySelector('#ovText').textContent=msg; updateUI(); }
+
+/* ===== UI ===== */
+function updateUI(){
+  const tp=document.getElementById('turnPill'), pp=document.getElementById('phasePill'), h=document.getElementById('hint');
+  tp.textContent = (state&&state.phase&&state.phase.startsWith('setup'))?'準備中':`TURN ${state?state.turn:1} / 11`;
+  const setP=(t,bg,col)=>{pp.textContent=t;pp.style.background=bg;pp.style.color=col;};
+  let hint='';
+  switch(state&&state.phase){
+    case 'setup-hide': setP('犯人の配置','#7a2230','#ff9aa6'); hint='<b>犯人</b>：隠れる<span class="y">ビル</span>をタップ'; break;
+    case 'setup-place': setP('警察の配置','#1d3a6a','#9fc4ff'); hint=`<b>警察</b>：置く（あと ${state.policeCount-state.police.length} 人）— <span class="g">緑の交差点</span>をタップ`; break;
+    case 'police': setP('警察の番','#1d3a6a','#9fc4ff'); hint='警察を選び <span class="g">緑＝移動</span> / <span class="y">黄ビル＝確認</span>。1人1回。'; break;
+    case 'crime-wait': setP('犯人の番','#7a2230','#ff9aa6'); hint='犯人に画面を渡しています…'; break;
+    case 'crime-human': setP('犯人の番','#7a2230','#ff9aa6'); hint='<b>犯人</b>：逃げる<span style="color:#ff9aa6">隣のビル</span>をタップ'; break;
+    case 'crime': setP('犯人の番','#7a2230','#ff9aa6'); hint='犯人が逃走中…'; break;
+    case 'over': setP('終了','#333','#ccc'); hint=''; break;
+    default: setP('—','#24304d','#eaf2ff');
+  }
+  h.innerHTML=hint; updateDots();
+}
+function updateDots(){ const d=document.getElementById('dots'); d.innerHTML='';
+  if(state&&state.phase==='police') for(let k=0;k<state.policeCount;k++){ const e=document.createElement('div'); e.className='odot';
+    e.classList.add(state.acted[k]?'done':'live'); if(k===state.selected&&!state.acted[k]) e.classList.add('sel'); d.appendChild(e); } }
+let toastT=null; function toast(m){ const t=document.getElementById('toast'); t.innerHTML=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1600); }
+
+/* ===== カメラ ===== */
+function setCamera(mode){ document.getElementById('btn3d').classList.toggle('active',mode==='3d'); document.getElementById('btnTop').classList.toggle('active',mode==='top');
+  if(mode==='3d'){ camera.position.set(0,55,82); controls.enableRotate=true; controls.maxPolarAngle=Math.PI/2.15; } else { camera.position.set(0,125,0.001); controls.enableRotate=false; }
+  controls.target.set(0,4,0); controls.update(); }
+
+/* ボタン */
+document.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>startGame(false, +b.dataset.pc));
+document.getElementById('startSolo').onclick=()=>startGame(true,3);
+document.getElementById('btn3d').onclick=()=>setCamera('3d');
+document.getElementById('btnTop').onclick=()=>setCamera('top');
+document.getElementById('btnHelp').onclick=()=>elHelp.classList.remove('hidden');
+document.getElementById('btnHelpClose').onclick=()=>elHelp.classList.add('hidden');
+document.getElementById('btnReset').onclick=()=>{ elOver.classList.add('hidden'); elHand.classList.add('hidden'); elStart.classList.remove('hidden'); };
+document.getElementById('ovShow').onclick=()=>{ elOver.classList.add('hidden'); toast('犯人の通った道を表示中。指で回して確認できます（「最初から」で戻る）'); };
+document.getElementById('ovBtn').onclick=()=>{ elOver.classList.add('hidden'); elStart.classList.remove('hidden'); };
+
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+const clock=new THREE.Clock();
+function animate(){ requestAnimationFrame(animate); const t=clock.getElapsedTime();
+  traceMeshes.forEach(o=>{ o.star.position.y=o.base+Math.sin(t*3)*0.18; });
+  hl.children.forEach(c=>{ if(c.userData.bob!==undefined) c.position.y=c.userData.bob+Math.sin(t*4)*0.45; });
+  if(selRing.visible) selRing.scale.setScalar(1+Math.sin(t*5)*0.06);
+  controls.update(); renderer.render(scene,camera); }
+setCamera('3d'); updateUI(); animate();
+</script>
+</body>
+</html>
