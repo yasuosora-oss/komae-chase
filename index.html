@@ -333,7 +333,7 @@ function handoff(msg,btn,cb){ elHand.querySelector('#handoffMsg').innerHTML=msg;
 /* ===== ゲーム開始 ===== */
 function startGame(criminalAI,policeCount){
   elStart.classList.add('hidden'); elOver.classList.add('hidden');
-  clearTraces(); clearHL(); if(pathLine){scene.remove(pathLine);pathLine=null;} police.forEach(p=>p.mesh.visible=false); showCriminal(false);
+  clearTraces(); clearHL(); if(pathLine){scene.remove(pathLine);pathLine=null;} police.forEach(p=>p.mesh.visible=false); showCriminal(false); selRing.visible=false;
   state=freshState(criminalAI,policeCount);
   updateUI();
   if(criminalAI){ state.criminal=Math.floor(Math.random()*25); beginPlace(true); }
