@@ -348,7 +348,7 @@ function placeOfficer(iidx){ if(state.police.includes(iidx)) return; const k=sta
   state.police.push(iidx); police[k].mesh.visible=true; atInter(police[k].mesh,iidx);
   if(state.police.length===state.policeCount){ clearHL(); startPolicePhase(); } else { clearHL(); hlInters([...Array(16).keys()].filter(x=>!state.police.includes(x))); updateUI(); } }
 
-function startPolicePhase(){ state.phase='police'; state.acted=[false,false,false]; selectFirstUnacted(); updateUI(); }
+function startPolicePhase(){ state.phase='police'; state.acted=Array(state.policeCount).fill(false); selectFirstUnacted(); updateUI(); }
 function selectFirstUnacted(){ const k=state.acted.findIndex(v=>!v); state.selected=(k<0?0:k); refreshSelection(); }
 function movesFor(k){ return iNeighbors(state.police[k]); }
 function searchesFor(k){ return buildingsAround(state.police[k]); }
